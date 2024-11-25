@@ -23,26 +23,19 @@ const StockSnip = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [stockData, setStockData] = useState(null);
-  interface Article {
-    headline: string;
-    datetime: number;
-    summary: string;
-    aiSummary?: string;
-    url: string;
-  }
-  
-  const [news, setNews] = useState<Article[]>([]);
-
-  const ALPHA_VANTAGE_API_KEY = 'your_api_key';
-  const FINNHUB_API_KEY = 'your_api_key';
-  const TOGETHER_API_KEY = 'your_api_key';
+  const [news, setNews] = useState<any[]>([]);
 
   const fetchStockData = async (symbol: any) => {
     try {
-      const response = await fetch(
-        `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${ALPHA_VANTAGE_API_KEY}`
-      );
+      const response = await fetch("/api/getStockData", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ symbol }),
+      });
       const data = await response.json();
+      console.log('Stock data:', data);
       return data['Global Quote'];
     } catch (err) {
       throw new Error('Failed to fetch stock data');
@@ -51,10 +44,15 @@ const StockSnip = () => {
 
   const fetchNews = async (symbol: any) => {
     try {
-      const response = await fetch(
-        `https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=2024-01-01&to=2024-12-31&token=${FINNHUB_API_KEY}`
-      );
+      const response = await fetch("/api/getStockNews", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ symbol }),
+      });
       const data = await response.json();
+      console.log('Stock news:', data);
       return data.slice(0, 5);
     } catch (err) {
       throw new Error('Failed to fetch news');
@@ -63,21 +61,29 @@ const StockSnip = () => {
 
   const summarizeArticle = async (article: any) => {
     try {
-      const response = await fetch('https://api.together.xyz/inference', {
+      const response = await fetch("/api/getAnswer", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${TOGETHER_API_KEY}`,
         },
-        body: JSON.stringify({
-          model: 'togethercomputer/llama-2-7b-chat',
-          prompt: `Please provide a concise summary of this news article: ${article.headline}\n\n${article.summary}`,
-          max_tokens: 150,
-          temperature: 0.7,
-        }),
+        body: JSON.stringify({article}),
       });
-      const data = await response.json();
-      return data.output.choices[0].text;
+      
+      if (!response.ok) {
+        throw new Error(response.statusText);
+      }
+      
+      if (response.status === 202) {
+        const fullAnswer = await response.text();
+        return fullAnswer;
+      }
+      
+      // This data is a ReadableStream
+      const data = response.body;
+      if (!data) {
+        return;
+      }
+
     } catch (err) {
       throw new Error('Failed to generate summary');
     }
