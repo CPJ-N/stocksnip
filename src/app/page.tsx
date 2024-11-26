@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Search, RefreshCw, AlertCircle } from 'lucide-react';
 import {
   Card,
@@ -24,33 +24,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-
-// Sample response (parsed as JSON)
-const stockData2 = {
-  "Meta Data": {
-      "2. Symbol": "MSFT",
-      "3. Last Refreshed": "2024-11-22 19:00:00",
-      "4. Interval": "60min",
-      "5. Time Zone": "US/Eastern"
-  },
-  "Time Series (60min)": {
-      "2024-11-22 19:00:00": {
-          "1. open": "425.8739",
-          "2. high": "426.7721",
-          "3. low": "416.2732",
-          "4. close": "425.6543",
-          "5. volume": "15673865"
-      },
-      "2024-11-22 18:00:00": {
-          "1. open": "425.6942",
-          "2. high": "426.0335",
-          "3. low": "399.4423",
-          "4. close": "425.8938",
-          "5. volume": "727914"
-      }
-      // ... more data
-  }
-};
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 const chartConfig = {
   open: {
@@ -82,13 +56,24 @@ const StockSnip = () => {
   const [error, setError] = useState('');
   const [stockData, setStockData] = useState(null);
   const [news, setNews] = useState<any[]>([]);
-  const [aiStockSummary, setAiStockSummary] = useState('');
+  const [combinedSummary, setCombinedSummary] = useState<string>("");
   const [pertChange, setPertChange] = useState('');
   const [lastPrice, setLastPrice] = useState('');
   const [activeChart, setActiveChart] = React.useState<keyof typeof chartConfig>("close");
   const [stockDataReform, setStockDataReform] = useState<{ date: string; open: number; high: number; low: number; close: number; volume: number; }[]>([]);
 
-  const fetchStockData = async (symbol: any) => {
+  const resetState = () => {
+    setTicker('');
+    setStockData(null);
+    setNews([]);
+    setCombinedSummary('');
+    setPertChange('');
+    setLastPrice('');
+    setActiveChart('close');
+    setStockDataReform([]);
+  };
+
+  const fetchStockData = async (symbol: string) => {
     try {
       const response = await fetch("/api/getStockData", {
         method: "POST",
@@ -101,11 +86,12 @@ const StockSnip = () => {
       console.log('Stock data:', data);
       return data;
     } catch (err) {
+      console.error('[fetchStockData] Error details:', err);
       throw new Error('Failed to fetch stock data');
     }
   };
 
-  const fetchNews = async (symbol: any) => {
+  const fetchNews = async (symbol: string) => {
     try {
       const response = await fetch("/api/getStockNews", {
         method: "POST",
@@ -118,13 +104,14 @@ const StockSnip = () => {
       console.log('Stock news:', data);
       return data.slice(0, 10);
     } catch (err) {
+      console.error('[fetchNews] Error details:', err);
       throw new Error('Failed to fetch news');
     }
   };
 
-  const summarizeArticle = async (article: any) => {
+  const summarizeArticles = async (article: any) => {
     try {
-      const response = await fetch("/api/getAnswer", {
+      const response = await fetch("/api/getSummary", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,6 +135,7 @@ const StockSnip = () => {
       }
 
     } catch (err) {
+      console.error('[summarizeArticles] Error details:', err);
       throw new Error('Failed to generate summary');
     }
   };
@@ -176,6 +164,7 @@ const StockSnip = () => {
   const handleSearch = async () => {
     if (!ticker) return;
     
+    resetState();
     setLoading(true);
     setError('');
     
@@ -204,15 +193,15 @@ const StockSnip = () => {
           url: article.url,
         }))
       );
+      setNews(articlesWithSummaries);
 
       calculatePercentageChange(stockInfo);  
 
-      // const [aiSummary] = await Promise.all([
-      //   // summarizeArticle(newsArticles),
-      // ]);
-      // setAiStockSummary(aiSummary || '');
-
-      setNews(articlesWithSummaries);
+      const [aiSummary] = await Promise.all([
+        summarizeArticles(newsArticles),
+      ]);
+      setCombinedSummary(aiSummary || "");
+      
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -228,7 +217,10 @@ const StockSnip = () => {
     <div className="min-h-screen" style={{ backgroundColor: '#fcfcfc' }}>
       <div className="max-w-4xl mx-auto p-8">
         <header className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2" style={{ color: '#1f502c' }}>StockSnip</h1>
+            <h1 className="text-4xl font-bold mb-2">
+            <span style={{ color: '#1f502c' }}>Stock</span>
+            <span style={{ color: '#47a646' }}>Snip</span>
+            </h1>
           <p style={{ color: '#2c6c34' }}>Get AI-powered summaries of the latest stock news</p>
         </header>
 
@@ -254,6 +246,12 @@ const StockSnip = () => {
           </Button>
         </div>
 
+        {loading && (
+            <div className="flex justify-center items-center mb-8">
+              <LoadingSpinner className="w-16 h-16 text-[#39893d]" />
+            </div>
+        )}
+
         {error && (
           <Alert variant="destructive" className="mb-8">
             <AlertCircle className="h-4 w-4" />
@@ -262,7 +260,19 @@ const StockSnip = () => {
           </Alert>
         )}
 
-        {stockData && (
+        {combinedSummary && !loading && (
+          <Card className="mb-8 border-t-4" style={{ borderTopColor: '#47a646' }}>
+            <CardHeader>
+              <CardTitle style={{ color: '#1f502c' }}>AI Summary</CardTitle>
+              <CardDescription style={{ color: '#2c6c34' }}>Summary of the latest news articles</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p style={{ color: '#1f502c' }}>{combinedSummary}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {stockData && !loading && (
           <Card className="mb-8 border-t-4" style={{ borderTopColor: '#47a646' }}>
             <CardHeader>
               <CardTitle style={{ color: '#1f502c' }}>{ticker} Stock Information</CardTitle>
@@ -290,7 +300,8 @@ const StockSnip = () => {
             </CardContent>
           </Card>
         )}
-        {stockData && (
+
+        {stockData && !loading && (
           <Card className="mb-8 border-t-4" style={{ borderTopColor: '#47a646' }}>
             <CardHeader className="flex flex-col items-stretch space-y-0 border-b p-0 sm:flex-row">
               <div className="flex flex-1 flex-col justify-center gap-1 px-6 py-5 sm:py-6">
@@ -373,7 +384,7 @@ const StockSnip = () => {
           </Card>
         )}
 
-        {news.length > 0 && (
+        {news.length > 0 && !loading && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold" style={{ color: '#1f502c' }}>Latest News</h2>
             {news.map((article, index) => (
