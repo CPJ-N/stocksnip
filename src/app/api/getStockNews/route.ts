@@ -49,9 +49,10 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(data, { status: 200 });
-  } catch (error: any) {
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "An error occurred";
     return NextResponse.json(
-      { error: error.message || "An error occurred" },
+      { error: errorMessage },
       { status: 400 }
     );
   }

@@ -49,13 +49,41 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
+// Add these interfaces at the top of the file
+interface TimeSeriesData {
+  "1. open": string;
+  "2. high": string;
+  "3. low": string;
+  "4. close": string;
+  "5. volume": string;
+}
+
+interface StockData {
+  "Time Series (60min)": {
+    [timestamp: string]: TimeSeriesData;
+  };
+  "Meta Data"?: {
+    "1. Information": string;
+    "2. Symbol": string;
+    "3. Last Refreshed": string;
+  };
+}
+
+interface Article {
+  datetime: number;
+  headline: string;
+  url: string;
+  summary?: string;
+  publishedAt: string;
+}
+
 
 const StockSnip = () => {
   const [ticker, setTicker] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [stockData, setStockData] = useState(null);
-  const [news, setNews] = useState<any[]>([]);
+  const [news, setNews] = useState<Article[]>([]);
   const [combinedSummary, setCombinedSummary] = useState<string>("");
   const [pertChange, setPertChange] = useState('');
   const [lastPrice, setLastPrice] = useState('');
@@ -109,7 +137,7 @@ const StockSnip = () => {
     }
   };
 
-  const summarizeArticles = async (article: any) => {
+  const summarizeArticles = async (article: Article) => {
     try {
       const response = await fetch("/api/getSummary", {
         method: 'POST',
@@ -140,7 +168,7 @@ const StockSnip = () => {
     }
   };
 
-  const calculatePercentageChange = (stockData: any) => {
+  const calculatePercentageChange = (stockData: StockData) => {
     if (!stockData["Time Series (60min)"]) {
       return 0;
     }
@@ -186,7 +214,7 @@ const StockSnip = () => {
       setStockDataReform(reformedStockData);
 
       const articlesWithSummaries = await Promise.all(
-        newsArticles.map(async (article :any) => ({
+        newsArticles.map(async (article :Article) => ({
           datetime: article.datetime,
           headline: article.headline,
           summary: article.summary,
