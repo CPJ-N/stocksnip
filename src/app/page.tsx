@@ -17,6 +17,64 @@ import {
   AlertDescription,
   AlertTitle,
 } from "@/components/ui/alert";
+import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+
+// Sample response (parsed as JSON)
+const stockData2 = {
+  "Meta Data": {
+      "2. Symbol": "MSFT",
+      "3. Last Refreshed": "2024-11-22 19:00:00",
+      "4. Interval": "60min",
+      "5. Time Zone": "US/Eastern"
+  },
+  "Time Series (60min)": {
+      "2024-11-22 19:00:00": {
+          "1. open": "425.8739",
+          "2. high": "426.7721",
+          "3. low": "416.2732",
+          "4. close": "425.6543",
+          "5. volume": "15673865"
+      },
+      "2024-11-22 18:00:00": {
+          "1. open": "425.6942",
+          "2. high": "426.0335",
+          "3. low": "399.4423",
+          "4. close": "425.8938",
+          "5. volume": "727914"
+      }
+      // ... more data
+  }
+};
+
+const chartConfig = {
+  open: {
+    label: "Open Price",
+    color: "hsl(var(--chart-1))",
+  },
+  high: {
+    label: "High Price",
+    color: "hsl(var(--chart-2))",
+  },
+  low: {
+    label: "Low Price",
+    color: "hsl(var(--chart-3))",
+  },
+  close: {
+    label: "Close Price",
+    color: "hsl(var(--chart-4))",
+  },
+  volume: {
+    label: "Volume",
+    color: "hsl(var(--chart-5))",
+  },
+} satisfies ChartConfig;
+
 
 const StockSnip = () => {
   const [ticker, setTicker] = useState('');
@@ -24,6 +82,9 @@ const StockSnip = () => {
   const [error, setError] = useState('');
   const [stockData, setStockData] = useState(null);
   const [news, setNews] = useState<any[]>([]);
+  const [aiStockSummary, setAiStockSummary] = useState('');
+  const [activeChart, setActiveChart] = React.useState<keyof typeof chartConfig>("close");
+  const [stockDataReform, setStockDataReform] = useState<{ date: string; open: number; high: number; low: number; close: number; volume: number; }[]>([]);
 
   const fetchStockData = async (symbol: any) => {
     try {
@@ -36,7 +97,7 @@ const StockSnip = () => {
       });
       const data = await response.json();
       console.log('Stock data:', data);
-      return data['Global Quote'];
+      return data;
     } catch (err) {
       throw new Error('Failed to fetch stock data');
     }
@@ -53,7 +114,7 @@ const StockSnip = () => {
       });
       const data = await response.json();
       console.log('Stock news:', data);
-      return data.slice(0, 5);
+      return data.slice(0, 10);
     } catch (err) {
       throw new Error('Failed to fetch news');
     }
@@ -102,13 +163,29 @@ const StockSnip = () => {
       ]);
 
       setStockData(stockInfo);
+      const reformedStockData = Object.entries(stockInfo["Time Series (60min)"]).map(([date, values]) => ({
+        date,
+        open: parseFloat((values as { [key: string]: string })["1. open"]),
+        high: parseFloat((values as { [key: string]: string })["2. high"]),
+        low: parseFloat((values as { [key: string]: string })["3. low"]),
+        close: parseFloat((values as { [key: string]: string })["4. close"]),
+        volume: parseInt((values as { [key: string]: string })["5. volume"], 10),
+      }));
+      setStockDataReform(reformedStockData);
 
       const articlesWithSummaries = await Promise.all(
         newsArticles.map(async (article :any) => ({
-          ...article,
-          aiSummary: await summarizeArticle(article),
+          datetime: article.datetime,
+          headline: article.headline,
+          summary: article.summary,
+          url: article.url,
         }))
       );
+
+      // const [aiSummary] = await Promise.all([
+      //   // summarizeArticle(newsArticles),
+      // ]);
+      // setAiStockSummary(aiSummary || '');
 
       setNews(articlesWithSummaries);
     } catch (err) {
@@ -188,6 +265,88 @@ const StockSnip = () => {
             </CardContent>
           </Card>
         )}
+        {stockData && (
+          <Card className="mb-8 border-t-4" style={{ borderTopColor: '#47a646' }}>
+            <CardHeader className="flex flex-col items-stretch space-y-0 border-b p-0 sm:flex-row">
+              <div className="flex flex-1 flex-col justify-center gap-1 px-6 py-5 sm:py-6">
+                <CardTitle>Stock Data Chart</CardTitle>
+                <CardDescription>Displaying stock data trends.</CardDescription>
+              </div>
+              <div className="flex">
+                {Object.keys(chartConfig).map((key) => {
+                  const chart = key as keyof typeof chartConfig;
+                  return (
+                    <button
+                      key={chart}
+                      data-active={activeChart === chart}
+                      className="flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l data-[active=true]:bg-muted/50 sm:border-l sm:border-t-0 sm:px-8 sm:py-6"
+                      onClick={() => setActiveChart(chart)}
+                    >
+                      <span className="text-xs text-muted-foreground">
+                        {chartConfig[chart].label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </CardHeader>
+            <CardContent className="px-2 sm:p-6">
+              <ChartContainer
+                config={chartConfig}
+                className="aspect-auto h-[250px] w-full"
+              >
+                <LineChart
+                  accessibilityLayer
+                  data={stockDataReform}
+                  margin={{
+                    left: 12,
+                    right: 12,
+                  }}
+                >
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    minTickGap={32}
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+                      return date.toLocaleTimeString("en-US", {
+                        hour: "numeric",
+                        minute: "numeric",
+                      });
+                    }}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        className="w-[150px]"
+                        nameKey="date"
+                        labelFormatter={(value) => {
+                          return new Date(value).toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "numeric",
+                            minute: "numeric",
+                          });
+                        }}
+                      />
+                    }
+                  />
+                  <Line
+                    dataKey={activeChart}
+                    type="monotone"
+                    stroke={chartConfig[activeChart].color}
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
 
         {news.length > 0 && (
           <div className="space-y-6">
@@ -207,12 +366,6 @@ const StockSnip = () => {
                         Original Article
                       </h3>
                       <p style={{ color: '#1f502c' }}>{article.summary}</p>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-sm mb-2" style={{ color: '#39893d' }}>
-                        AI Summary
-                      </h3>
-                      <p style={{ color: '#1f502c' }}>{article.aiSummary}</p>
                     </div>
                   </div>
                 </CardContent>

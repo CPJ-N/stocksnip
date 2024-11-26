@@ -48,8 +48,15 @@ export default {
   				'2': 'hsl(var(--chart-2))',
   				'3': 'hsl(var(--chart-3))',
   				'4': 'hsl(var(--chart-4))',
-  				'5': 'hsl(var(--chart-5))'
-  			}
+  				'5,': 'hsl(var(--chart-5))'
+  			},
+			brand: {
+			light: "#fcfcfc", // Light Gray
+			dark: "#1f502c", // Dark Green
+			medium: "#2c6c34", // Medium Green
+			darker: "#39893d", // Darker Green
+			green: "#47a646", // Primary Green
+			},
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
