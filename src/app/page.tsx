@@ -83,6 +83,8 @@ const StockSnip = () => {
   const [stockData, setStockData] = useState(null);
   const [news, setNews] = useState<any[]>([]);
   const [aiStockSummary, setAiStockSummary] = useState('');
+  const [pertChange, setPertChange] = useState('');
+  const [lastPrice, setLastPrice] = useState('');
   const [activeChart, setActiveChart] = React.useState<keyof typeof chartConfig>("close");
   const [stockDataReform, setStockDataReform] = useState<{ date: string; open: number; high: number; low: number; close: number; volume: number; }[]>([]);
 
@@ -150,6 +152,27 @@ const StockSnip = () => {
     }
   };
 
+  const calculatePercentageChange = (stockData: any) => {
+    if (!stockData["Time Series (60min)"]) {
+      return 0;
+    }
+  
+    const timeSeriesData = stockData["Time Series (60min)"];
+    const timestamps = Object.keys(timeSeriesData).sort(); // Sort timestamps chronologically
+    
+    // Get first (oldest) and last (newest) entries
+    const oldestEntry = timeSeriesData[timestamps[0]]; // First index = oldest
+    const newestEntry = timeSeriesData[timestamps[timestamps.length - 1]]; // Last index = newest
+  
+    const openPrice = parseFloat(oldestEntry["1. open"]);
+    const closePrice = parseFloat(newestEntry["4. close"]);
+    setLastPrice(closePrice.toString());
+  
+    const percentageChange = ((closePrice - openPrice) / openPrice) * 100;
+    
+    setPertChange(percentageChange.toFixed(2).toString());
+  };
+
   const handleSearch = async () => {
     if (!ticker) return;
     
@@ -181,6 +204,8 @@ const StockSnip = () => {
           url: article.url,
         }))
       );
+
+      calculatePercentageChange(stockInfo);  
 
       // const [aiSummary] = await Promise.all([
       //   // summarizeArticle(newsArticles),
@@ -248,7 +273,7 @@ const StockSnip = () => {
                 <div>
                   <p style={{ color: '#2c6c34' }} className="text-sm">Price</p>
                   <p className="text-xl font-semibold" style={{ color: '#1f502c' }}>
-                    ${stockData['05. price']}
+                    ${lastPrice ? lastPrice : 0}
                   </p>
                 </div>
                 <div>
@@ -258,7 +283,7 @@ const StockSnip = () => {
                       ? 'text-green-600' 
                       : 'text-red-600'
                   }`}>
-                    {stockData['09. change']}%
+                    {pertChange ? pertChange : 0}%
                   </p>
                 </div>
               </div>
