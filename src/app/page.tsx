@@ -25,6 +25,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import LoadingSpinner from '@/components/LoadingSpinner';
+import Footer from '@/components/Footer';
 
 const chartConfig = {
   open: {
@@ -448,6 +449,7 @@ const StockSnip = () => {
             ))}
           </div>
         )}
+        <Footer />
       </div>
     </div>
   );
