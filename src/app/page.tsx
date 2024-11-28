@@ -304,7 +304,7 @@ const StockSnip = () => {
         {stockData && !loading && (
           <Card className="mb-8 border-t-4" style={{ borderTopColor: '#47a646' }}>
             <CardHeader>
-              <CardTitle style={{ color: '#1f502c' }}>{ticker} Stock Information</CardTitle>
+              <CardTitle style={{ color: '#1f502c' }}>{stockData["Meta Data"]["2. Symbol"]} Stock Information</CardTitle>
               <CardDescription style={{ color: '#2c6c34' }}>Latest trading data</CardDescription>
             </CardHeader>
             <CardContent>
