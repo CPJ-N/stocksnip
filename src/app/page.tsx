@@ -289,6 +289,21 @@ const StockSnip = () => {
           </Alert>
         )}
 
+        <div className="flex items-center mb-8">
+            <h2 className="text-l font-bold mr-4" style={{ color: '#1f502c' }}>Popular Stock Picks</h2>
+            <div className="flex gap-2 flex-wrap">
+          {['AAPL', 'MSFT', 'META', 'TSLA'].map((symbol) => (
+            <Button
+              key={symbol}
+              onClick={() => setTicker(symbol)}
+              className="bg-white text-[#39893d] hover:bg-[#f0f0f0] px-2 py-1 text-xs"
+            >
+              {symbol}
+            </Button>
+          ))}
+          </div>
+        </div>
+
         {combinedSummary && !loading && (
           <Card className="mb-8 border-t-4" style={{ borderTopColor: '#47a646' }}>
             <CardHeader>
