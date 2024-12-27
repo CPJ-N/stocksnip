@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Search, RefreshCw, AlertCircle } from 'lucide-react';
+import { Search, RefreshCw, AlertCircle, PieChart, DollarSign, Briefcase, TrendingUp, ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -78,13 +78,22 @@ interface Article {
   publishedAt: string;
 }
 
+interface StockOverview {
+  Description: string;
+  MarketCapitalization: string;
+  EPS: string;
+  "52WeekHigh": string;
+  "52WeekLow": string;
+}
+
 
 const StockSnip = () => {
   const [ticker, setTicker] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [stockData, setStockData] = useState(null);
-  const [news, setNews] = useState<Article[]>([]);
+  const [news, setNews] = useState<Article[]>([]);  
+  const [stockOverview, setStockOverview] = useState<StockOverview | null>(null);
   const [combinedSummary, setCombinedSummary] = useState<string>("");
   const [pertChange, setPertChange] = useState('');
   const [lastPrice, setLastPrice] = useState('');
@@ -135,6 +144,18 @@ const StockSnip = () => {
     } catch (err) {
       console.error('[fetchNews] Error details:', err);
       throw new Error('Failed to fetch news');
+    }
+  };
+
+  const fetchOverview = async (symbol: string) => {
+    try {
+      const response = await fetch(`/api/getStockData?symbol=${symbol}`); // GET request
+      const data = await response.json();
+      console.log('Overview data:', data);
+      return data;
+    } catch (err) {
+      console.error('Failed to fetch overview:', err);
+      throw err;
     }
   };
 
@@ -198,11 +219,13 @@ const StockSnip = () => {
     setError('');
     
     try {
-      const [stockInfo, newsArticles] = await Promise.all([
+      const [stockInfo, stockInfoOverview, newsArticles] = await Promise.all([
         fetchStockData(ticker),
+        fetchOverview(ticker),
         fetchNews(ticker),
       ]);
-
+      
+      setStockOverview(stockInfoOverview);
       setStockData(stockInfo);
       const reformedStockData = Object.entries(stockInfo["Time Series (60min)"]).map(([date, values]) => ({
         date,
@@ -304,16 +327,50 @@ const StockSnip = () => {
           </div>
         </div>
 
-        {combinedSummary && !loading && (
-          <Card className="mb-8 border-t-4" style={{ borderTopColor: '#47a646' }}>
-            <CardHeader>
-              <CardTitle style={{ color: '#1f502c' }}>AI Summary</CardTitle>
-              <CardDescription style={{ color: '#2c6c34' }}>Summary of the latest news articles</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p style={{ color: '#1f502c' }}>{combinedSummary}</p>
-            </CardContent>
-          </Card>
+        {stockOverview && !loading && (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium" style={{ color: '#1f502c' }}>Market Cap</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  ${(Number(stockOverview.MarketCapitalization) / 1e12).toFixed(1)}T
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium" style={{ color: '#1f502c' }}>52W High</CardTitle>
+                <ArrowUpIcon className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">${stockOverview["52WeekHigh"]}</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium" style={{ color: '#1f502c' }}>52W Low</CardTitle>
+                <ArrowDownIcon className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">${stockOverview["52WeekLow"]}</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium" style={{ color: '#1f502c' }}>EPS</CardTitle>
+                <PieChart className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">${stockOverview.EPS}</div>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {stockData && !loading && (
@@ -341,9 +398,30 @@ const StockSnip = () => {
                   </p>
                 </div>
               </div>
+              {stockOverview && stockOverview.Description && (
+          <div className="mt-4">
+            <p style={{ color: '#2c6c34' }} className="text-sm mt-8 pb-2">Company Description</p>
+            <p className="text-base" style={{ color: '#1f502c' }}>
+              {stockOverview.Description}
+            </p>
+          </div>
+              )}
             </CardContent>
           </Card>
         )}
+        
+        {combinedSummary && !loading && (
+          <Card className="mb-8 border-t-4" style={{ borderTopColor: '#47a646' }}>
+            <CardHeader>
+              <CardTitle style={{ color: '#1f502c' }}>AI News Summary</CardTitle>
+              <CardDescription style={{ color: '#2c6c34' }}>Summary of the latest news articles</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p style={{ color: '#1f502c' }}>{combinedSummary}</p>
+            </CardContent>
+          </Card>
+        )}
+
 
         {stockData && !loading && (
           <Card className="mb-8 border-t-4" style={{ borderTopColor: '#47a646' }}>

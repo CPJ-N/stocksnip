@@ -41,3 +41,22 @@ export async function POST(req: Request) {
     );
   }
 }
+
+// ...existing code...
+
+export async function GET(req: Request) {
+  try {
+    const symbol = new URL(req.url).searchParams.get("symbol");
+    if (!symbol) throw new Error("Missing symbol");
+
+    const response = await fetch(
+      `${BASE_URL}?function=OVERVIEW&symbol=${symbol}&apikey=${process.env.ALPHA_VANTAGE_API_KEY}`
+    );
+    const data = await response.json();
+
+    return NextResponse.json(data);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "An error occurred";
+    return NextResponse.json({ error: errorMessage }, { status: 400 });
+  }
+}
