@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Search, RefreshCw, AlertCircle, PieChart, DollarSign, Briefcase, TrendingUp, ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
+import { Search, RefreshCw, AlertCircle, PieChart, DollarSign, ArrowUpIcon, ArrowDownIcon } from 'lucide-react';
 import {
   Card,
   CardContent,
